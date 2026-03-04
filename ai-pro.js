@@ -8,19 +8,29 @@ window.ask = async (prompt) => {
     throw new Error('key_missing');
   }
 
-  const PROXY = 'https://corsproxy.io/?';
   const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
 
   try {
-    const r = await fetch(PROXY + encodeURIComponent(URL), {
+    const r = await fetch(URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
     });
+
+    if (!r.ok) {
+      const details = await r.text();
+      printTerminal(`[ERR] AI request failed (${r.status}).`, 'error');
+      if (r.status === 400 || r.status === 401 || r.status === 403) {
+        printTerminal('[HINT] Check your Gemini API key and API restrictions.', 'info');
+      }
+      if (details) printTerminal(details.slice(0, 240), 'error');
+      return '';
+    }
+
     const d = await r.json();
     return d?.candidates?.[0]?.content?.parts?.[0]?.text || '';
   } catch (e) {
-    printTerminal('[ERR] AI Handshake failed.', 'error');
+    printTerminal('[ERR] AI Handshake failed. Check network/CORS settings.', 'error');
     return '';
   }
 };
@@ -49,7 +59,7 @@ window.runAITransform = async (instruction, replaceSelectionOnly = true) => {
 
 window.fixCodeWithAI = async () => {
   const code = window.editor.getValue();
-  printTerminal('[AI] Requesting Ghost Fix via Proxy...', 'info');
+  printTerminal('[AI] Requesting Ghost Fix...', 'info');
   const suggestion = await window.ask(`Act as an expert. Fix this code. Return ONLY code, no markdown:\n\n${code}`);
   if (!suggestion) return;
   originalCode = code;
