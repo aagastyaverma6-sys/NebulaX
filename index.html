@@ -79,13 +79,18 @@
   </div>
   <div id="group-view" class="tool-group">
     <button onclick="togglePreview()">Live Overlay</button>
+    <button onclick="toggleZenMode()">Zen Mode</button>
+    <button onclick="resetLayout()">Reset Layout</button>
   </div>
 </div>
 
 <main class="workspace">
   <div id="file-tabs" class="tabs-row"></div>
   <div class="editor-container">
-    <div id="editor"></div>
+    <div id="editor-pane">
+      <div id="editor"></div>
+    </div>
+    <div id="vertical-resizer" class="resizer resizer-vertical" title="Drag to resize editor and preview"></div>
     <div id="ghost-ui" class="ghost-controls">
         <span>AI Suggestion:</span>
         <button onclick="acceptGhostCode()" class="btn-primary">Accept</button>
@@ -95,6 +100,8 @@
       <iframe id="web-viewer"></iframe>
     </div>
   </div>
+
+  <div id="horizontal-resizer" class="resizer resizer-horizontal" title="Drag to resize editor and terminal"></div>
 
   <div class="terminal-container" onclick="document.getElementById('term-input').focus()">
     <div class="terminal-body" id="term-content"></div>

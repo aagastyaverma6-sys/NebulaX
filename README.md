@@ -9,6 +9,7 @@ NebulaX is a browser-based IDE experiment with Monaco editor, runtime execution,
 - New **Power Tools** ribbon with a command palette and 40+ built-in tools.
 - File operations: create, rename, delete, export.
 - UX improvements: status bar, keyboard shortcuts, richer terminal commands.
+- Pro layout controls: resizable editor/preview/terminal splitters, Zen mode, reset layout, minimap toggle.
 
 ## Quick start (local)
 

@@ -3,6 +3,19 @@ let __files = JSON.parse(localStorage.getItem('nebula_v2_files')) || [
 ];
 let __activeId = __files[0]?.id || 1;
 
+const layoutDefaults = {
+  previewWidth: 45,
+  terminalHeight: 180,
+  zenMode: false,
+  minimap: false,
+  previewVisible: false
+};
+
+const layoutState = {
+  ...layoutDefaults,
+  ...(JSON.parse(localStorage.getItem('nebula_layout_v1') || '{}'))
+};
+
 window.switchRibbon = (tabId, event) => {
   document.querySelectorAll('.tool-group').forEach(g => g.classList.remove('show'));
   const group = document.getElementById(`group-${tabId}`);
@@ -28,6 +41,107 @@ const extensionToMode = {
 const setStatus = (text) => {
   const s = document.getElementById('status-bar');
   if (s) s.textContent = text;
+};
+
+const persistLayout = () => localStorage.setItem('nebula_layout_v1', JSON.stringify(layoutState));
+
+const applyLayoutState = () => {
+  const preview = document.getElementById('preview-panel');
+  const terminal = document.querySelector('.terminal-container');
+  const body = document.body;
+  if (preview) {
+    preview.style.width = `${layoutState.previewWidth}%`;
+    preview.classList.toggle('preview-hidden', !layoutState.previewVisible);
+  }
+  if (terminal) terminal.style.height = `${layoutState.terminalHeight}px`;
+  body.classList.toggle('zen-mode', !!layoutState.zenMode);
+  if (window.editor) {
+    window.editor.updateOptions({ minimap: { enabled: !!layoutState.minimap } });
+    window.editor.layout();
+  }
+};
+
+const initResizablePanels = () => {
+  const vertical = document.getElementById('vertical-resizer');
+  const horizontal = document.getElementById('horizontal-resizer');
+  const container = document.querySelector('.editor-container');
+  const terminal = document.querySelector('.terminal-container');
+
+  if (vertical && container) {
+    vertical.onmousedown = (e) => {
+      if (document.getElementById('preview-panel').classList.contains('preview-hidden')) return;
+      e.preventDefault();
+      vertical.classList.add('active');
+      const rect = container.getBoundingClientRect();
+
+      const onMove = (moveEvent) => {
+        const raw = ((rect.right - moveEvent.clientX) / rect.width) * 100;
+        layoutState.previewWidth = Math.max(25, Math.min(65, raw));
+        applyLayoutState();
+      };
+
+      const onUp = () => {
+        vertical.classList.remove('active');
+        persistLayout();
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    };
+  }
+
+  if (horizontal && terminal) {
+    horizontal.onmousedown = (e) => {
+      e.preventDefault();
+      horizontal.classList.add('active');
+
+      const onMove = (moveEvent) => {
+        const raw = window.innerHeight - moveEvent.clientY - 30;
+        layoutState.terminalHeight = Math.max(120, Math.min(420, raw));
+        applyLayoutState();
+      };
+
+      const onUp = () => {
+        horizontal.classList.remove('active');
+        persistLayout();
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    };
+  }
+};
+
+window.togglePreview = () => {
+  layoutState.previewVisible = !layoutState.previewVisible;
+  applyLayoutState();
+  persistLayout();
+  setStatus(layoutState.previewVisible ? 'Preview opened' : 'Preview hidden');
+};
+
+window.toggleZenMode = () => {
+  layoutState.zenMode = !layoutState.zenMode;
+  applyLayoutState();
+  persistLayout();
+  setStatus(layoutState.zenMode ? 'Zen mode enabled' : 'Zen mode disabled');
+};
+
+window.resetLayout = () => {
+  Object.assign(layoutState, layoutDefaults);
+  applyLayoutState();
+  persistLayout();
+  setStatus('Layout reset to defaults');
+};
+
+window.toggleMinimap = () => {
+  layoutState.minimap = !layoutState.minimap;
+  applyLayoutState();
+  persistLayout();
+  setStatus(layoutState.minimap ? 'Minimap enabled' : 'Minimap disabled');
 };
 
 const getActiveFile = () => __files.find(x => x.id === __activeId);
@@ -101,6 +215,8 @@ require(['vs/editor/editor.main'], function () {
   renderTabs();
   loadToEditor();
   applyEditorLanguage();
+  initResizablePanels();
+  applyLayoutState();
 });
 
 document.getElementById('lang-select').onchange = (e) => {
@@ -203,7 +319,26 @@ const toolDefs = [
   { id: 'save-workspace', name: 'Save Workspace Snapshot', run: () => document.getElementById('save-disk').click() },
   { id: 'export-active-file', name: 'Export Active File', run: () => { const f = getActiveFile(); if (!f) return; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([window.editor.getValue()], { type: 'text/plain' })); a.download = f.name; a.click(); setStatus(`Exported ${f.name}`); } },
   { id: 'focus-terminal', name: 'Focus Terminal', run: () => document.getElementById('term-input').focus() },
-  { id: 'tips', name: 'Show Productivity Tips', run: () => { pad(); printTerminal('[TIP] Rename files with extension for accurate syntax highlighting.', 'info'); } }
+  { id: 'tips', name: 'Show Productivity Tips', run: () => { pad(); printTerminal('[TIP] Rename files with extension for accurate syntax highlighting.', 'info'); } },
+  { id: 'toggle-preview-pane', name: 'Toggle Preview Pane', run: () => window.togglePreview() },
+  { id: 'toggle-zen-mode', name: 'Toggle Zen Mode', run: () => window.toggleZenMode() },
+  { id: 'toggle-minimap', name: 'Toggle Minimap', run: () => window.toggleMinimap() },
+  { id: 'reset-layout', name: 'Reset Layout', run: () => window.resetLayout() },
+  { id: 'duplicate-active-file', name: 'Duplicate Active File', run: () => {
+    const f = getActiveFile();
+    if (!f) return;
+    const clone = { id: Date.now(), name: `${f.name}.copy`, content: window.editor.getValue() };
+    __files.push(clone);
+    __activeId = clone.id;
+    renderTabs();
+    loadToEditor();
+    applyEditorLanguage();
+    setStatus(`Duplicated ${f.name}`);
+  } },
+  { id: 'workspace-summary', name: 'Workspace Summary', run: () => {
+    const totalChars = __files.reduce((acc, file) => acc + (file.content || '').length, 0);
+    printTerminal(`[WORKSPACE] Files: ${__files.length}, Total chars: ${totalChars}`, 'info');
+  } }
 ];
 
 window.runToolById = (id) => {

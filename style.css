@@ -214,18 +214,53 @@ body {
   flex: 1;
   display: flex;
   position: relative;
+  min-height: 180px;
+}
+
+#editor-pane {
+  flex: 1;
+  min-width: 260px;
+  position: relative;
 }
 
 #editor {
-  flex: 1;
+  width: 100%;
+  height: 100%;
 }
 
 #preview-panel {
   width: 45%;
+  min-width: 220px;
   background: #fff;
   border-left: 2px solid var(--border);
   display: flex;
   flex-direction: column;
+}
+
+.resizer {
+  background: #1f2937;
+  position: relative;
+  z-index: 3;
+  transition: background 120ms ease;
+}
+
+.resizer:hover,
+.resizer.active {
+  background: var(--accent);
+}
+
+.resizer-vertical {
+  width: 6px;
+  cursor: col-resize;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+.resizer-horizontal {
+  height: 6px;
+  cursor: row-resize;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
 
 .preview-hidden {
@@ -239,10 +274,24 @@ body {
 
 .terminal-container {
   height: 180px;
+  min-height: 120px;
   background: #000;
   border-top: 1px solid var(--border);
   display: flex;
   flex-direction: column;
+}
+
+body.zen-mode .ribbon,
+body.zen-mode .tool-bar,
+body.zen-mode .tabs-row,
+body.zen-mode .terminal-container,
+body.zen-mode #horizontal-resizer,
+body.zen-mode .status-bar {
+  display: none !important;
+}
+
+body.zen-mode .workspace {
+  height: 100vh;
 }
 
 .terminal-body {
